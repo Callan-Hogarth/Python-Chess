@@ -43,6 +43,7 @@ pieces = {'w_pawn': white_pawn, 'w_rook': white_rook, 'w_knight': white_knight, 
 
 selected_x = +inf
 selected_y = +inf
+valid_moves = []
 
 def draw_board():
     offset_x = 0
@@ -78,20 +79,208 @@ def draw_selection():
         pygame.draw.rect(window, "yellow", [(selected_x * (WIDTH / 8)), (selected_y * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 3)
 
 
+def draw_valid_moves():
+    for i in range(len(valid_moves)):
+        pygame.draw.rect(window, "green", [(valid_moves[i][0] * (WIDTH / 8)), (valid_moves[i][1] * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 2)
+
+
+def check_valid_moves(x, y):
+    valid = []
+    piece = board_layout[y][x][2:]
+    if piece == "pawn":
+        valid = check_pawn_moves(x, y)
+    if piece == "knight":
+        valid = check_knight_moves(x, y)
+    if piece == "rook":
+        valid = check_rook_moves(x, y)
+    if piece == "bishop":
+        valid = check_bishop_moves(x, y)
+    if piece == "queen":
+        valid = check_queen_moves(x, y)
+    if piece == "king":
+        valid = check_king_moves(x, y)
+    return valid
+
+
+def check_pawn_moves(x, y):
+    valid = []
+    colour = board_layout[y][x][:1]
+    if colour == 'w':
+        if board_layout[y - 1][x] == '':
+            valid.append((x, y - 1))
+        if y == 6 and board_layout[y - 1][x] == '' and board_layout[y - 2][x] == '':
+            valid.append((x, y - 2))
+        if x != 0 and board_layout[y - 1][x - 1][:1] == 'b':
+            valid.append((x - 1, y - 1))
+        if x != 7 and board_layout[y - 1][x + 1][:1] == 'b':
+            valid.append((x + 1, y - 1))
+    else:
+        if board_layout[y + 1][x] == '':
+            valid.append((x, y + 1))
+        if y == 1 and board_layout[y + 1][x] == '' and board_layout[y + 2][x] == '':
+            valid.append((x, y + 2))
+        if x != 0 and board_layout[y + 1][x - 1][:1] == 'w':
+            valid.append((x - 1, y + 1))
+        if x != 7 and board_layout[y + 1][x + 1][:1] == 'w':
+            valid.append((x + 1, y + 1))
+    return valid
+
+
+def check_knight_moves(x, y):
+    valid = []
+    colour = board_layout[y][x][:1]
+    if y + 2 <= 7 and x + 1 <= 7 and (board_layout[y + 2][x + 1] == '' or board_layout[y + 2][x + 1][:1] != colour):
+        valid.append((x + 1, y + 2))
+    if y + 1 <= 7 and x + 2 <= 7 and (board_layout[y + 1][x + 2] == '' or board_layout[y + 1][x + 2][:1] != colour):
+        valid.append((x + 2, y + 1))
+    if y - 2 >= 0 and x - 1 >= 0 and (board_layout[y - 2][x - 1] == '' or board_layout[y - 2][x - 1][:1] != colour):
+        valid.append((x - 1, y - 2))
+    if y - 1 >= 0 and x - 2 >= 0 and (board_layout[y - 1][x - 2] == '' or board_layout[y - 1][x - 2][:1] != colour):
+        valid.append((x - 2, y - 1))
+    if y + 2 <= 7 and x - 1 >= 0 and (board_layout[y + 2][x - 1] == '' or board_layout[y + 2][x - 1][:1] != colour):
+        valid.append((x - 1, y + 2))
+    if y - 2 >= 0 and x + 1 <= 7 and (board_layout[y - 2][x + 1] == '' or board_layout[y - 2][x + 1][:1] != colour):
+        valid.append((x + 1, y - 2))
+    if y + 1 <= 7 and x - 2 >= 0 and (board_layout[y + 1][x - 2] == '' or board_layout[y + 1][x - 2][:1] != colour):
+        valid.append((x - 2, y + 1))
+    if y - 1 >= 0 and x + 2 <= 7 and (board_layout[y - 1][x + 2] == '' or board_layout[y - 1][x + 2][:1] != colour):
+        valid.append((x + 2, y - 1))
+    return valid
+
+
+def check_rook_moves(x, y):
+    valid = []
+    colour = board_layout[y][x][:1]
+
+    i = 1
+    while y + i <= 7 and board_layout[y + i][x] == '':
+        valid.append((x, y + i))
+        i += 1
+    if y + i <= 7 and board_layout[y + i][x][:1] != colour:
+        valid.append((x, y + i))
+
+    i = 1
+    while y - i >= 0 and board_layout[y - i][x] == '':
+        valid.append((x, y - i))
+        i += 1
+    if y - i >= 0 and board_layout[y - i][x][:1] != colour:
+        valid.append((x, y - i))
+
+    i = 1
+    while x + i <= 7 and board_layout[y][x + i] == '':
+        valid.append((x + i, y))
+        i += 1
+    if x + i <= 7 and board_layout[y][x + i][:1] != colour:
+        valid.append((x + i, y))
+
+    i = 1
+    while x - i >= 0 and board_layout[y][x - i] == '':
+        valid.append((x - i, y))
+        i += 1
+    if x - i >= 0 and board_layout[y][x - i][:1] != colour:
+        valid.append((x - i, y))
+    return valid
+
+
+def check_bishop_moves(x, y):
+    valid = []
+    colour = board_layout[y][x][:1]
+
+    i = 1
+    while y + i <= 7 and x + i <= 7 and board_layout[y + i][x + i] == '':
+        valid.append((x + i, y + i))
+        i += 1
+    if y + i <= 7 and x + i <= 7 and board_layout[y + i][x + i][:1] != colour:
+        valid.append((x + i, y + i))
+
+    i = 1
+    while y - i >= 0 and x - i >= 0 and board_layout[y - i][x - i] == '':
+        valid.append((x - i, y - i))
+        i += 1
+    if y - i >= 0 and x - i >= 0 and board_layout[y - i][x - i][:1] != colour:
+        valid.append((x - i, y - i))
+
+    i = 1
+    while y - i >= 0 and x + i <= 7 and board_layout[y - i][x + i] == '':
+        valid.append((x + i, y - i))
+        i += 1
+    if y - i >= 0 and x + i <= 7 and board_layout[y - i][x + i][:1] != colour:
+        valid.append((x + i, y - i))
+
+    i = 1
+    while y + i <= 7 and x - i >= 0 and board_layout[y + i][x - i] == '':
+        valid.append((x - i, y + i))
+        i += 1
+    if y + i <= 7 and x - i >= 0 and board_layout[y + i][x - i][:1] != colour:
+        valid.append((x - i, y + i))
+    return valid
+
+
+def check_queen_moves(x, y):
+    rook_moves = check_rook_moves(x, y)
+    bishop_moves = check_bishop_moves(x, y)
+    valid = rook_moves + bishop_moves
+    return valid
+
+
+def check_king_moves(x, y):
+    valid = []
+    colour = board_layout[y][x][:1]
+    if y + 1 <= 7 and (board_layout[y + 1][x] == '' or board_layout[y + 1][x][:1] != colour):
+        valid.append((x, y + 1))
+    if y - 1 >= 0 and (board_layout[y - 1][x] == '' or board_layout[y - 1][x][:1] != colour):
+        valid.append((x, y - 1))
+    if x + 1 <= 7 and (board_layout[y][x + 1] == '' or board_layout[y][x + 1][:1] != colour):
+        valid.append((x + 1, y))
+    if x - 1 >= 0 and (board_layout[y][x - 1] == '' or board_layout[y][x - 1][:1] != colour):
+        valid.append((x - 1, y))
+    if y + 1 <= 7 and x + 1 <= 7 and (board_layout[y + 1][x + 1] == '' or board_layout[y + 1][x + 1][:1] != colour):
+        valid.append((x + 1, y + 1))
+    if y - 1 >= 0 and x - 1 >= 0 and (board_layout[y - 1][x - 1] == '' or board_layout[y - 1][x - 1][:1] != colour):
+        valid.append((x - 1, y - 1))
+    if y - 1 >= 0 and x + 1 <= 7 and (board_layout[y - 1][x + 1] == '' or board_layout[y - 1][x + 1][:1] != colour):
+        valid.append((x + 1, y - 1))
+    if y + 1 <= 7 and x - 1 >= 0 and (board_layout[y + 1][x - 1] == '' or board_layout[y + 1][x - 1][:1] != colour):
+        valid.append((x - 1, y + 1))
+    return valid
+
+
 turn = 'w'
 running = True
+valid_played = False
 
 while running:
     time.tick(FPS)
     draw_board()
     draw_pieces()
     draw_selection()
+    draw_valid_moves()
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
-            selected_x = event.pos[0]
-            selected_y = event.pos[1]
-            selected_x //= (WIDTH / 8)
-            selected_y //= (HEIGHT / 8)
+            x = int(event.pos[0] // (WIDTH / 8))
+            y = int(event.pos[1] // (HEIGHT / 8))
+            colour = board_layout[y][x][:1]
+            valid_played = False
+            if 0 <= selected_x <= 7 and 0 <= selected_y <= 7:
+                for i in range(len(valid_moves)):
+                    valid_x = valid_moves[i][0]
+                    valid_y = valid_moves[i][1]
+                    if x == valid_x and y == valid_y:
+                        board_layout[y][x] = board_layout[selected_y][selected_x]
+                        board_layout[selected_y][selected_x] = ''
+                        valid_played = True
+                selected_x = +inf
+                selected_y = +inf
+                valid_moves = []
+            if turn == colour:
+                selected_x = x
+                selected_y = y
+                valid_moves = check_valid_moves(selected_x, selected_y)
+            if valid_played:
+                if turn == 'w':
+                    turn = 'b'
+                else:
+                    turn = 'w'
         if event.type == pygame.QUIT:
             running = False
     pygame.display.flip()
