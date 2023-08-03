@@ -34,7 +34,7 @@ white_king = pygame.image.load('./images/white_king.png')
 black_king = pygame.image.load('./images/black_king.png')
 
 # initial board layout as 2d array
-board_layout_1 = [['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
+board_layout = [['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
                   ['b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn'],
                   ['', '', '', '', '', '', '', ''],
                   ['', '', '', '', '', '', '', ''],
@@ -489,6 +489,7 @@ while running:
                 checked = ()
                 last_move = []
                 promoting_piece = []
+                castling_possibilities = {'wl': True, 'wr': True, 'bl': True, 'br': True}
                 board_layout = reset_board()
         # stop running if window is quit
         if event.type == pygame.QUIT:
