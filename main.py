@@ -1,4 +1,5 @@
 import sys
+import copy
 from math import inf
 
 import pygame
@@ -35,27 +36,23 @@ black_king = pygame.image.load('./images/black_king.png')
 
 # initial board layout as 2d array
 board_layout = [['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bishop', 'b_knight', 'b_rook'],
-                  ['b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn'],
-                  ['', '', '', '', '', '', '', ''],
-                  ['', '', '', '', '', '', '', ''],
-                  ['', '', '', '', '', '', '', ''],
-                  ['', '', '', '', '', '', '', ''],
-                  ['w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn'],
-                  ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']]
-
+                ['b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn', 'b_pawn'],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn'],
+                ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']]
 
 # dictionary to match pieces in board_layout to piece images
 pieces = {'w_pawn': white_pawn, 'w_rook': white_rook, 'w_knight': white_knight, 'w_bishop': white_bishop, 'w_queen': white_queen, 'w_king': white_king,
           'b_pawn': black_pawn, 'b_rook': black_rook, 'b_knight': black_knight, 'b_bishop': black_bishop, 'b_queen': black_queen, 'b_king': black_king}
 
-
 # selected_x and selected_y used to identify which square is currently selected
 selected_x = +inf
 selected_y = +inf
-# valid_moves represents all valid playable moves of the selected piece as an array of x y tuples
-valid_moves = []
-# all_valid_moves represents all possible moves as an array of x y tuples, used when checking for check
-all_valid_moves = []
+# moves_list represents all  playable moves of the selected piece as an array of x y tuples
+moves_list = []
 # last_move, the latest played move stored as [piece, (previous_x, previous_y), (new_x, new_y)], used for en passant in pawn moves
 last_move = []
 # piece that is being promoted stored as [colour, (x, y)]
@@ -64,6 +61,9 @@ promoting_piece = []
 castling_possibilities = {'wl': True, 'wr': True, 'bl': True, 'br': True}
 # tuple of coordinates of checked king, empty otherwise
 checked = ()
+# if checkmate has occurred
+checkmate = False
+
 
 # used to draw black and white squares (to create the board)
 def draw_board():
@@ -103,17 +103,17 @@ def draw_selection():
 
 
 # used to draw green outline of valid moves for the selected square
-def draw_valid_moves():
-    for i in range(len(valid_moves)):
-        pygame.draw.rect(window, 'green', [(valid_moves[i][0] * (WIDTH / 8)), (valid_moves[i][1] * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 2)
+def draw_moves():
+    for i in range(len(moves_list)):
+        pygame.draw.rect(window, 'green', [(moves_list[i][0] * (WIDTH / 8)), (moves_list[i][1] * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 2)
 
 
 # used to draw red outline around king if in check
 def draw_check():
     if checked:
-        x = checked[0]
-        y = checked[1]
-        pygame.draw.rect(window, 'red', [x * (WIDTH / 8), y * (HEIGHT / 8), (WIDTH / 8), (HEIGHT / 8)], 2)
+        check_x = checked[0]
+        check_y = checked[1]
+        pygame.draw.rect(window, 'red', [check_x * (WIDTH / 8), check_y * (HEIGHT / 8), (WIDTH / 8), (HEIGHT / 8)], 2)
 
 
 # used to draw promotion selection
@@ -136,196 +136,261 @@ def draw_winning_message():
     pygame.draw.rect(window, 'black', [WIDTH / 4, HEIGHT / 3, WIDTH / 2, HEIGHT / 6])
     if winner == 'w':
         winning_message = font.render('White Player is the Winner!', False, 'white')
-    else:
+    elif winner == 'b':
         winning_message = font.render('Black Player is the Winner!', False, 'white')
+    else:
+        winning_message = font.render('Draw', False, 'white')
     window.blit(winning_message, ((WIDTH / 4) + 40, HEIGHT / 3 + (HEIGHT / 6) / 2))
 
 
-# used to select the right "check moves" function for the currently selected piece
-def check_valid_moves(x, y):
-    valid = []
-    piece = board_layout[y][x][2:]
+# used to switch turn
+def switch_turn(t):
+    if t == 'w':
+        return 'b'
+    else:
+        return 'w'
+
+
+# used to select the right "get moves" function for the currently selected piece
+def get_moves(x, y, board):
+    moves = []
+    piece = board[y][x][2:]
     if piece == 'pawn':
-        valid = check_pawn_moves(x, y)
+        moves = get_pawn_moves(x, y, board)
     if piece == 'knight':
-        valid = check_knight_moves(x, y)
+        moves = get_knight_moves(x, y, board)
     if piece == 'rook':
-        valid = check_rook_moves(x, y)
+        moves = get_rook_moves(x, y, board)
     if piece == 'bishop':
-        valid = check_bishop_moves(x, y)
+        moves = get_bishop_moves(x, y, board)
     if piece == 'queen':
-        valid = check_queen_moves(x, y)
+        moves = get_queen_moves(x, y, board)
     if piece == 'king':
-        valid = check_king_moves(x, y)
+        moves = get_king_moves(x, y, board)
+    return moves
+
+
+# used to get all possible moves for the current players turn (t)
+def get_all_moves(board, t):
+    all_moves = []
+    for i_y in range(8):
+        for i_x in range(8):
+            if board[i_y][i_x][:1] == t:
+                current_moves = get_moves(i_x, i_y, board)
+                for m in range(len(current_moves)):
+                    all_moves.append([board[i_y][i_x], (i_x, i_y), current_moves[m]])
+    return all_moves
+
+
+# used to get all valid moves, where not in check after turn
+def get_all_valid_moves(board, t):
+    board_copy = copy.deepcopy(board)
+    all_moves = get_all_moves(board, t)
+    valid = []
+    for i in range(len(all_moves)):
+        board = copy.deepcopy(board_copy)
+        board = make_move(board, all_moves[i][1][0], all_moves[i][1][1], all_moves[i][2][0], all_moves[i][2][1])
+        t = switch_turn(t)
+        new_moves = get_all_moves(board, t)
+        check = check_check(board, new_moves, t)
+        t = switch_turn(t)
+        if not check:
+            valid.append(all_moves[i])
     return valid
 
 
-# used to find all playable moves
-def check_all_valid_moves():
-    valid = []
-    for i in range(8):
-        for j in range(8):
-            valid += check_valid_moves(i, j)
-    return valid
+# used to get moves for the  selected piece from a list of moves
+def get_selected_moves(all_moves, sel_x, sel_y):
+    selected_moves = []
+    for i in range(len(all_moves)):
+        if all_moves[i][1] == (sel_x, sel_y):
+            selected_moves.append(all_moves[i][2])
+    return selected_moves
 
 
-def check_pawn_moves(x, y):
+def get_pawn_moves(x, y, board):
     valid = []
-    colour = board_layout[y][x][:1]
+    colour = board[y][x][:1]
     if colour == 'w':
-        if y != 0 and board_layout[y - 1][x] == '':
+        if y != 0 and board[y - 1][x] == '':
             valid.append((x, y - 1))
-        if y == 6 and board_layout[y - 1][x] == '' and board_layout[y - 2][x] == '':
+        if y == 6 and board[y - 1][x] == '' and board[y - 2][x] == '':
             valid.append((x, y - 2))
-        if x != 0 and y != 0 and board_layout[y - 1][x - 1][:1] == 'b':
+        if x != 0 and y != 0 and board[y - 1][x - 1][:1] == 'b':
             valid.append((x - 1, y - 1))
-        if x != 7 and y != 0 and board_layout[y - 1][x + 1][:1] == 'b':
+        if x != 7 and y != 0 and board[y - 1][x + 1][:1] == 'b':
             valid.append((x + 1, y - 1))
         # En Passant
-        if y == 3 and board_layout[y][x + 1] == 'b_pawn' and last_move[1] == (x + 1, 1) and last_move[2] == (x + 1, 3):
+        if y == 3 and board[y][x + 1] == 'b_pawn' and last_move[1] == (x + 1, 1) and last_move[2] == (x + 1, 3):
             valid.append((x + 1, y - 1))
-        if y == 3 and board_layout[y][x - 1] == 'b_pawn' and last_move[1] == (x - 1, 1) and last_move[2] == (x - 1, 3):
+        if y == 3 and board[y][x - 1] == 'b_pawn' and last_move[1] == (x - 1, 1) and last_move[2] == (x - 1, 3):
             valid.append((x - 1, y - 1))
     else:
-        if y != 7 and board_layout[y + 1][x] == '':
+        if y != 7 and board[y + 1][x] == '':
             valid.append((x, y + 1))
-        if y == 1 and board_layout[y + 1][x] == '' and board_layout[y + 2][x] == '':
+        if y == 1 and board[y + 1][x] == '' and board[y + 2][x] == '':
             valid.append((x, y + 2))
-        if x != 0 and y != 7 and board_layout[y + 1][x - 1][:1] == 'w':
+        if x != 0 and y != 7 and board[y + 1][x - 1][:1] == 'w':
             valid.append((x - 1, y + 1))
-        if x != 7 and y != 7 and board_layout[y + 1][x + 1][:1] == 'w':
+        if x != 7 and y != 7 and board[y + 1][x + 1][:1] == 'w':
             valid.append((x + 1, y + 1))
         # En Passant
-        if y == 4 and board_layout[y][x + 1] == 'w_pawn' and last_move[1] == (x + 1, 6) and last_move[2] == (x + 1, 4):
+        if y == 4 and board[y][x + 1] == 'w_pawn' and last_move[1] == (x + 1, 6) and last_move[2] == (x + 1, 4):
             valid.append((x + 1, y + 1))
-        if y == 4 and board_layout[y][x - 1] == 'w_pawn' and last_move[1] == (x - 1, 6) and last_move[2] == (x - 1, 4):
+        if y == 4 and board[y][x - 1] == 'w_pawn' and last_move[1] == (x - 1, 6) and last_move[2] == (x - 1, 4):
             valid.append((x - 1, y + 1))
     return valid
 
 
-def check_knight_moves(x, y):
+def get_knight_moves(x, y, board):
     valid = []
-    colour = board_layout[y][x][:1]
-    if y + 2 <= 7 and x + 1 <= 7 and (board_layout[y + 2][x + 1] == '' or board_layout[y + 2][x + 1][:1] != colour):
+    colour = board[y][x][:1]
+    if y + 2 <= 7 and x + 1 <= 7 and (board[y + 2][x + 1] == '' or board[y + 2][x + 1][:1] != colour):
         valid.append((x + 1, y + 2))
-    if y + 1 <= 7 and x + 2 <= 7 and (board_layout[y + 1][x + 2] == '' or board_layout[y + 1][x + 2][:1] != colour):
+    if y + 1 <= 7 and x + 2 <= 7 and (board[y + 1][x + 2] == '' or board[y + 1][x + 2][:1] != colour):
         valid.append((x + 2, y + 1))
-    if y - 2 >= 0 and x - 1 >= 0 and (board_layout[y - 2][x - 1] == '' or board_layout[y - 2][x - 1][:1] != colour):
+    if y - 2 >= 0 and x - 1 >= 0 and (board[y - 2][x - 1] == '' or board[y - 2][x - 1][:1] != colour):
         valid.append((x - 1, y - 2))
-    if y - 1 >= 0 and x - 2 >= 0 and (board_layout[y - 1][x - 2] == '' or board_layout[y - 1][x - 2][:1] != colour):
+    if y - 1 >= 0 and x - 2 >= 0 and (board[y - 1][x - 2] == '' or board[y - 1][x - 2][:1] != colour):
         valid.append((x - 2, y - 1))
-    if y + 2 <= 7 and x - 1 >= 0 and (board_layout[y + 2][x - 1] == '' or board_layout[y + 2][x - 1][:1] != colour):
+    if y + 2 <= 7 and x - 1 >= 0 and (board[y + 2][x - 1] == '' or board[y + 2][x - 1][:1] != colour):
         valid.append((x - 1, y + 2))
-    if y - 2 >= 0 and x + 1 <= 7 and (board_layout[y - 2][x + 1] == '' or board_layout[y - 2][x + 1][:1] != colour):
+    if y - 2 >= 0 and x + 1 <= 7 and (board[y - 2][x + 1] == '' or board[y - 2][x + 1][:1] != colour):
         valid.append((x + 1, y - 2))
-    if y + 1 <= 7 and x - 2 >= 0 and (board_layout[y + 1][x - 2] == '' or board_layout[y + 1][x - 2][:1] != colour):
+    if y + 1 <= 7 and x - 2 >= 0 and (board[y + 1][x - 2] == '' or board[y + 1][x - 2][:1] != colour):
         valid.append((x - 2, y + 1))
-    if y - 1 >= 0 and x + 2 <= 7 and (board_layout[y - 1][x + 2] == '' or board_layout[y - 1][x + 2][:1] != colour):
+    if y - 1 >= 0 and x + 2 <= 7 and (board[y - 1][x + 2] == '' or board[y - 1][x + 2][:1] != colour):
         valid.append((x + 2, y - 1))
     return valid
 
 
-def check_rook_moves(x, y):
+def get_rook_moves(x, y, board):
     valid = []
-    colour = board_layout[y][x][:1]
+    colour = board[y][x][:1]
     i = 1
-    while y + i <= 7 and board_layout[y + i][x] == '':
+    while y + i <= 7 and board[y + i][x] == '':
         valid.append((x, y + i))
         i += 1
-    if y + i <= 7 and board_layout[y + i][x][:1] != colour:
+    if y + i <= 7 and board[y + i][x][:1] != colour:
         valid.append((x, y + i))
     i = 1
-    while y - i >= 0 and board_layout[y - i][x] == '':
+    while y - i >= 0 and board[y - i][x] == '':
         valid.append((x, y - i))
         i += 1
-    if y - i >= 0 and board_layout[y - i][x][:1] != colour:
+    if y - i >= 0 and board[y - i][x][:1] != colour:
         valid.append((x, y - i))
     i = 1
-    while x + i <= 7 and board_layout[y][x + i] == '':
+    while x + i <= 7 and board[y][x + i] == '':
         valid.append((x + i, y))
         i += 1
-    if x + i <= 7 and board_layout[y][x + i][:1] != colour:
+    if x + i <= 7 and board[y][x + i][:1] != colour:
         valid.append((x + i, y))
     i = 1
-    while x - i >= 0 and board_layout[y][x - i] == '':
+    while x - i >= 0 and board[y][x - i] == '':
         valid.append((x - i, y))
         i += 1
-    if x - i >= 0 and board_layout[y][x - i][:1] != colour:
+    if x - i >= 0 and board[y][x - i][:1] != colour:
         valid.append((x - i, y))
     return valid
 
 
-def check_bishop_moves(x, y):
+def get_bishop_moves(x, y, board):
     valid = []
-    colour = board_layout[y][x][:1]
+    colour = board[y][x][:1]
     i = 1
-    while y + i <= 7 and x + i <= 7 and board_layout[y + i][x + i] == '':
+    while y + i <= 7 and x + i <= 7 and board[y + i][x + i] == '':
         valid.append((x + i, y + i))
         i += 1
-    if y + i <= 7 and x + i <= 7 and board_layout[y + i][x + i][:1] != colour:
+    if y + i <= 7 and x + i <= 7 and board[y + i][x + i][:1] != colour:
         valid.append((x + i, y + i))
     i = 1
-    while y - i >= 0 and x - i >= 0 and board_layout[y - i][x - i] == '':
+    while y - i >= 0 and x - i >= 0 and board[y - i][x - i] == '':
         valid.append((x - i, y - i))
         i += 1
-    if y - i >= 0 and x - i >= 0 and board_layout[y - i][x - i][:1] != colour:
+    if y - i >= 0 and x - i >= 0 and board[y - i][x - i][:1] != colour:
         valid.append((x - i, y - i))
     i = 1
-    while y - i >= 0 and x + i <= 7 and board_layout[y - i][x + i] == '':
+    while y - i >= 0 and x + i <= 7 and board[y - i][x + i] == '':
         valid.append((x + i, y - i))
         i += 1
-    if y - i >= 0 and x + i <= 7 and board_layout[y - i][x + i][:1] != colour:
+    if y - i >= 0 and x + i <= 7 and board[y - i][x + i][:1] != colour:
         valid.append((x + i, y - i))
     i = 1
-    while y + i <= 7 and x - i >= 0 and board_layout[y + i][x - i] == '':
+    while y + i <= 7 and x - i >= 0 and board[y + i][x - i] == '':
         valid.append((x - i, y + i))
         i += 1
-    if y + i <= 7 and x - i >= 0 and board_layout[y + i][x - i][:1] != colour:
+    if y + i <= 7 and x - i >= 0 and board[y + i][x - i][:1] != colour:
         valid.append((x - i, y + i))
     return valid
 
 
-def check_queen_moves(x, y):
-    rook_moves = check_rook_moves(x, y)
-    bishop_moves = check_bishop_moves(x, y)
+def get_queen_moves(x, y, board):
+    rook_moves = get_rook_moves(x, y, board)
+    bishop_moves = get_bishop_moves(x, y, board)
     valid = rook_moves + bishop_moves
     return valid
 
 
-def check_king_moves(x, y):
+def get_king_moves(x, y, board):
     valid = []
-    colour = board_layout[y][x][:1]
-    if y + 1 <= 7 and (board_layout[y + 1][x] == '' or board_layout[y + 1][x][:1] != colour):
+    colour = board[y][x][:1]
+    if y + 1 <= 7 and (board[y + 1][x] == '' or board[y + 1][x][:1] != colour):
         valid.append((x, y + 1))
-    if y - 1 >= 0 and (board_layout[y - 1][x] == '' or board_layout[y - 1][x][:1] != colour):
+    if y - 1 >= 0 and (board[y - 1][x] == '' or board[y - 1][x][:1] != colour):
         valid.append((x, y - 1))
-    if x + 1 <= 7 and (board_layout[y][x + 1] == '' or board_layout[y][x + 1][:1] != colour):
+    if x + 1 <= 7 and (board[y][x + 1] == '' or board[y][x + 1][:1] != colour):
         valid.append((x + 1, y))
-    if x - 1 >= 0 and (board_layout[y][x - 1] == '' or board_layout[y][x - 1][:1] != colour):
+    if x - 1 >= 0 and (board[y][x - 1] == '' or board[y][x - 1][:1] != colour):
         valid.append((x - 1, y))
-    if y + 1 <= 7 and x + 1 <= 7 and (board_layout[y + 1][x + 1] == '' or board_layout[y + 1][x + 1][:1] != colour):
+    if y + 1 <= 7 and x + 1 <= 7 and (board[y + 1][x + 1] == '' or board[y + 1][x + 1][:1] != colour):
         valid.append((x + 1, y + 1))
-    if y - 1 >= 0 and x - 1 >= 0 and (board_layout[y - 1][x - 1] == '' or board_layout[y - 1][x - 1][:1] != colour):
+    if y - 1 >= 0 and x - 1 >= 0 and (board[y - 1][x - 1] == '' or board[y - 1][x - 1][:1] != colour):
         valid.append((x - 1, y - 1))
-    if y - 1 >= 0 and x + 1 <= 7 and (board_layout[y - 1][x + 1] == '' or board_layout[y - 1][x + 1][:1] != colour):
+    if y - 1 >= 0 and x + 1 <= 7 and (board[y - 1][x + 1] == '' or board[y - 1][x + 1][:1] != colour):
         valid.append((x + 1, y - 1))
-    if y + 1 <= 7 and x - 1 >= 0 and (board_layout[y + 1][x - 1] == '' or board_layout[y + 1][x - 1][:1] != colour):
+    if y + 1 <= 7 and x - 1 >= 0 and (board[y + 1][x - 1] == '' or board[y + 1][x - 1][:1] != colour):
         valid.append((x - 1, y + 1))
     # castling
     if x == 4:
-        if castling_possibilities['wl'] and board_layout[y][x - 1] == '' and board_layout[y][x - 2] == '' and board_layout[y][x - 3] == '':
+        if castling_possibilities['wl'] and board[y][x - 1] == '' and board[y][x - 2] == '' and board[y][x - 3] == '':
             valid.append((x - 4, y))
-        if castling_possibilities['wr'] and board_layout[y][x + 1] == '' and board_layout[y][x + 2] == '':
+        if castling_possibilities['wr'] and board[y][x + 1] == '' and board[y][x + 2] == '':
             valid.append((x + 3, y))
-        if castling_possibilities['bl'] and board_layout[y][x - 1] == '' and board_layout[y][x - 2] == '' and board_layout[y][x - 3] == '':
+        if castling_possibilities['bl'] and board[y][x - 1] == '' and board[y][x - 2] == '' and board[y][x - 3] == '':
             valid.append((x - 4, y))
-        if castling_possibilities['br'] and board_layout[y][x + 1] == '' and board_layout[y][x + 2] == '':
+        if castling_possibilities['br'] and board[y][x + 1] == '' and board[y][x + 2] == '':
             valid.append((x + 3, y))
     return valid
 
 
+# takes current board and move data and returns new board after move has been made
+def make_move(board, sel_x, sel_y, new_x, new_y):
+    # if en passant opportunity taken set piece captured by en_passant to empty
+    if board[sel_y][sel_x][2:] == 'pawn' and board[new_y][new_x] == '' and sel_x != new_x:
+        if new_x > sel_x:
+            board[sel_y][sel_x + 1] = ''
+        else:
+            board[sel_y][sel_x - 1] = ''
+        board[new_y][new_x] = board[sel_y][sel_x]
+        board[sel_y][sel_x] = ''
+    # if castling move king 2 spaces towards rook and then place rook on the other side
+    elif board[sel_y][sel_x][2:] == 'king' and board[new_y][new_x][2:] == 'rook' and board[new_y][new_x][:1] == turn:
+        if new_x == 0:
+            board[sel_y][sel_x - 2] = board[sel_y][sel_x]
+            board[sel_y][sel_x - 1] = board[new_y][new_x]
+        else:
+            board[sel_y][sel_x + 2] = board[sel_y][sel_x]
+            board[sel_y][sel_x + 1] = board[new_y][new_x]
+        board[sel_y][sel_x] = ''
+    # else play normal move
+    else:
+        board[new_y][new_x] = board[sel_y][sel_x]
+        board[sel_y][sel_x] = ''
+    return board
+
+
 # used to check if a piece has been chosen from the promotion selection and then return that piece
-def promote_piece(x, y):
+def promote_select(x, y):
     if HEIGHT / 3 < y < HEIGHT / 3 + HEIGHT / 8:
         offset = 0
         selection = ['knight', 'bishop', 'rook', 'queen']
@@ -337,16 +402,26 @@ def promote_piece(x, y):
             offset += WIDTH / 8
     return ''
 
+
 # used to check if a king is currently in check
-def check_check():
-    for i in range(len(all_valid_moves)):
-        x = all_valid_moves[i][0]
-        y = all_valid_moves[i][1]
-        piece = board_layout[y][x][2:]
-        colour = board_layout[y][x][:1]
-        if piece == 'king' and colour != turn:
+def check_check(board, all_moves, t):
+    for i in range(len(all_moves)):
+        x = all_moves[i][2][0]
+        y = all_moves[i][2][1]
+        piece = board[y][x][2:]
+        colour = board[y][x][:1]
+        if piece == 'king' and t != colour:
             checked_position = (x, y)
             return checked_position
+    return ()
+
+
+# used to check if current player is in checkmate (or stalemate) by checking if there are any valid playable moves
+def check_checkmate(all_moves):
+    if all_moves:
+        return False
+    else:
+        return True
 
 
 # used to reset board to starting layout
@@ -368,8 +443,8 @@ turn = 'w'
 valid_played = False
 # promoting, if pawn needs promoted set to true, initially set to false
 promoting = False
-# castled, true if castling has taken place in the current turn
-castled = False
+# set initial all valid moves to all the valid moves for white
+all_valid_moves = get_all_valid_moves(board_layout, turn)
 # winner, set as empty until a player has won
 winner = ''
 
@@ -381,7 +456,7 @@ while running:
     draw_board()
     draw_pieces()
     draw_selection()
-    draw_valid_moves()
+    draw_moves()
     draw_check()
     # if pawn needs promotion draw promotion selection window
     if promoting:
@@ -396,7 +471,7 @@ while running:
             y = event.pos[1]
             # if promoting a pawn check if within promotion selection window
             if promoting:
-                promotion_selection = promote_piece(x, y)
+                promotion_selection = promote_select(x, y)
                 # if piece is selected set pawn stored at the location in promoting_piece equal to the chosen piece and set promoting back to false
                 if promotion_selection:
                     board_layout[promoting_piece[1][1]][promoting_piece[1][0]] = promoting_piece[0] + '_' + promotion_selection
@@ -412,39 +487,17 @@ while running:
                 castled = False
                 # if a piece is already selected store selected piece details and check the coordinates are a valid move
                 if 0 <= selected_x <= 7 and 0 <= selected_y <= 7:
-                    for index in range(len(valid_moves)):
-                        valid_x = valid_moves[index][0]
-                        valid_y = valid_moves[index][1]
+                    for index in range(len(moves_list)):
+                        valid_x = moves_list[index][0]
+                        valid_y = moves_list[index][1]
                         if x == valid_x and y == valid_y:
-                            # if piece at coordinates is a king of the opposite colour set winner equal to turn
-                            if board_layout[y][x][2:] == 'king' and board_layout[y][x][:1] != turn:
-                                winner = turn
-                            # if en passant opportunity taken set piece captured by en_passant to empty
-                            if board_layout[selected_y][selected_x][2:] == 'pawn' and board_layout[y][x] == '' and selected_x != x:
-                                if x > selected_x:
-                                    board_layout[selected_y][selected_x + 1] = ''
-                                else:
-                                    board_layout[selected_y][selected_x - 1] = ''
                             # store move in last_move
                             last_move = [board_layout[selected_y][selected_x], (selected_x, selected_y), (x, y)]
-                            # if castling move king 2 spaces towards rook and then place rook on the other side
-                            if board_layout[selected_y][selected_x][2:] == 'king' and board_layout[y][x][2:] == 'rook':
-                                if x == 0:
-                                    board_layout[selected_y][selected_x - 2] = board_layout[selected_y][selected_x]
-                                    board_layout[selected_y][selected_x - 1] = board_layout[y][x]
-                                else:
-                                    board_layout[selected_y][selected_x + 2] = board_layout[selected_y][selected_x]
-                                    board_layout[selected_y][selected_x + 1] = board_layout[y][x]
-                                board_layout[selected_y][selected_x] = ''
-                                castled = True
-                            # otherwise play normal move, set board_layout at coordinates to the selected piece and set the selected piece to an empty square
-                            else:
-                                board_layout[y][x] = board_layout[selected_y][selected_x]
-                                board_layout[selected_y][selected_x] = ''
+                            board_layout = make_move(board_layout, selected_x, selected_y, x, y)
                             # if pawn reaches other side set promoting to true and store information about the promoting piece
                             if (y == 7 or y == 0) and board_layout[y][x][2:] == 'pawn':
-                                promoting = True
                                 promoting_piece = [turn, (x, y)]
+                                promoting = True
                             # update castling possibilities
                             if board_layout[y][x][2:] == 'king' or board_layout[y][x][2:] == 'rook':
                                 if board_layout[y][x] == 'w_king' or (selected_x == 0 and selected_y == 7):
@@ -455,42 +508,50 @@ while running:
                                     castling_possibilities['bl'] = False
                                 if board_layout[y][x] == 'b_king' or (selected_x == 7 and selected_y == 0):
                                     castling_possibilities['br'] = False
-                            # find all playable moves
-                            all_valid_moves = check_all_valid_moves()
-                            # check if king is in check after move has been played
-                            checked = check_check()
-                            # set valid played as move has been made
+                            # set valid played to true as move has been made
                             valid_played = True
-                    # set selected back to infinite and valid moves to empty
+                    # set selected back to infinite and moves list to empty
                     selected_x = +inf
                     selected_y = +inf
-                    valid_moves = []
-                # if the colour of the piece selected equals the turn, set selected to coordinates and check valid moves at that position
-                # will not be called when making valid move as cannot move to space where the colour of the piece is the same as the selected piece except for castling
-                if turn == piece_colour and not castled:
+                    moves_list = []
+                # if the colour of the piece is the same as turn and a valid move has not been chosen, set selected to coordinates and get valid moves at that position
+                if turn == piece_colour and not valid_played:
                     selected_x = x
                     selected_y = y
-                    valid_moves = check_valid_moves(selected_x, selected_y)
-                # if a valid move has been played swap turns
-                if valid_played:
-                    if turn == 'w':
-                        turn = 'b'
-                    else:
-                        turn = 'w'
+                    moves_list = get_selected_moves(all_valid_moves, selected_x, selected_y)
+            # if a valid move has been played and not promoting check if other player is in check and swap turns
+            # if promoting, promotion will take place first which will set promoting to false
+            if valid_played and not promoting:
+                all_next_moves = get_all_moves(board_layout, turn)
+                checked = check_check(board_layout, all_next_moves, turn)
+                turn = switch_turn(turn)
+            # generate all valid moves for the current players turn
+            all_valid_moves = get_all_valid_moves(board_layout, turn)
+            # check if in checkmate, if checked winner is set to the other player
+            # if not it is stalemate and the game ends in a draw
+            checkmate = check_checkmate(all_valid_moves)
+            if checkmate:
+                if checked:
+                    winner = switch_turn(turn)
+                else:
+                    winner = 'draw'
         if event.type == KEYDOWN:
             # if r is pressed reset board to starting position
             if event.key == pygame.K_r:
-                winner = ''
-                turn = 'w'
+                board_layout = reset_board()
+                all_valid_moves = get_all_valid_moves(board_layout, turn)
+                moves_list = []
+                last_move = []
+                valid_played = False
                 selected_x = +inf
                 selected_y = +inf
-                valid_moves = []
-                all_valid_moves = []
-                checked = ()
-                last_move = []
                 promoting_piece = []
+                promoting = False
                 castling_possibilities = {'wl': True, 'wr': True, 'bl': True, 'br': True}
-                board_layout = reset_board()
+                turn = 'w'
+                winner = ''
+                checked = ()
+                checkmate = False
         # stop running if window is quit
         if event.type == pygame.QUIT:
             running = False
