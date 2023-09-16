@@ -8,20 +8,22 @@ from pygame import *
 pygame.init()
 
 # create different sized fonts
+extremely_small_font = pygame.font.SysFont('verdana', 12)
 very_small_font = pygame.font.SysFont('verdana', 15)
-small_font = pygame.font.SysFont('verdana', 20)
+small_font = pygame.font.SysFont('verdana', 20, True)
 medium_font = pygame.font.SysFont('verdana', 36, True)
 large_font = pygame.font.SysFont('verdana', 48, True)
 very_large_font = pygame.font.SysFont('verdana', 64, True)
 
 # initiate width, height and fps constants
+# TOTAL_WIDTH is the width of the whole window, WIDTH and HEIGHT are the size of the board and SIDE_WIDTH is width of the sidebar
 TOTAL_WIDTH = 800
 WIDTH = 600
 HEIGHT = 600
 SIDE_WIDTH = TOTAL_WIDTH - WIDTH
 FPS = 60
 
-# set up window, caption and start clock
+# set up window, caption and clock
 window = pygame.display.set_mode((TOTAL_WIDTH, HEIGHT))
 pygame.display.set_caption('Python Chess')
 time = pygame.time.Clock()
@@ -59,6 +61,13 @@ black_queen = pygame.image.load('./images/black_queen.png')
 white_king = pygame.image.load('./images/white_king.png')
 black_king = pygame.image.load('./images/black_king.png')
 
+# dictionary to match pieces in board_layout to piece images
+PIECES = {'w_pawn': white_pawn, 'w_rook': white_rook, 'w_knight': white_knight, 'w_bishop': white_bishop, 'w_queen': white_queen, 'w_king': white_king,
+          'b_pawn': black_pawn, 'b_rook': black_rook, 'b_knight': black_knight, 'b_bishop': black_bishop, 'b_queen': black_queen, 'b_king': black_king}
+
+# points gained for each captured piece
+POINTS = {'pawn': 1, 'knight': 3, 'bishop': 3, 'rook': 5, 'queen': 9, 'king': 0}
+
 # initial board layout as 2d array
 # when referring to an individual square board_layout[y][x] is used as when indexing the row (y) is the first then column (x) is second
 # this makes it easier to visualise in comparison to arrays of columns
@@ -70,13 +79,6 @@ board_layout = [['b_rook', 'b_knight', 'b_bishop', 'b_queen', 'b_king', 'b_bisho
                 ['', '', '', '', '', '', '', ''],
                 ['w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn', 'w_pawn'],
                 ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']]
-
-# dictionary to match pieces in board_layout to piece images
-pieces = {'w_pawn': white_pawn, 'w_rook': white_rook, 'w_knight': white_knight, 'w_bishop': white_bishop, 'w_queen': white_queen, 'w_king': white_king,
-          'b_pawn': black_pawn, 'b_rook': black_rook, 'b_knight': black_knight, 'b_bishop': black_bishop, 'b_queen': black_queen, 'b_king': black_king}
-
-# points for each captured piece
-points = {'pawn': 1, 'knight': 3, 'bishop': 3, 'rook': 5, 'queen': 9, 'king': 0}
 
 # list of captured pieces for each colour
 captured_white_pieces = []
@@ -153,52 +155,52 @@ def draw_coords():
         letter = very_small_font.render(letters[i], True, (120, 120, 120))
         window.blit(letter, ((WIDTH / 8 - letter.get_width()) / 2 + offset, HEIGHT - letter.get_height()))
         number = very_small_font.render(numbers[i], True, (120, 120, 120))
-        window.blit(number, (0, HEIGHT * 7 / 8 + ((HEIGHT / 8 - letter.get_height()) / 2) - offset))
+        window.blit(number, (WIDTH / 256, HEIGHT * 7 / 8 + ((HEIGHT / 8 - letter.get_height()) / 2) - offset))
         offset += WIDTH / 8
 
 
 # used to draw pieces onto the board from board_layout
-def draw_pieces():
+def draw_pieces(board):
     offset_x = 0
     offset_y = 0
     for i_y in range(8):
         for i_x in range(8):
-            square = board_layout[i_y][i_x]
+            square = board[i_y][i_x]
             if square != '':
-                window.blit(pieces[square], (offset_x + 6, offset_y + 6))
+                window.blit(PIECES[square], (offset_x + 6, offset_y + 6))
             offset_x += WIDTH / 8
         offset_y += HEIGHT / 8
         offset_x = 0
 
 
 # used to draw yellow outline around currently selected square
-def draw_selection():
-    if selected_x != +inf and selected_y != +inf:
-        pygame.draw.rect(window, 'yellow', [(selected_x * (WIDTH / 8)), (selected_y * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 3)
+def draw_selection(sel_x, sel_y):
+    if sel_x != +inf and sel_y != +inf:
+        pygame.draw.rect(window, 'yellow', [(sel_x * (WIDTH / 8)), (sel_y * (HEIGHT / 8)), (WIDTH / 8), (HEIGHT / 8)], 3)
 
 
 # used to draw green circles in the centre of squares for each valid move for the selected piece
-def draw_moves():
-    for i in range(len(moves_list)):
-        pygame.draw.circle(window, 'green', [moves_list[i][0] * (WIDTH / 8) + (WIDTH / 16), moves_list[i][1] * (HEIGHT / 8) + (WIDTH / 16)], 5)
+def draw_moves(moves):
+    for i in range(len(moves)):
+        pygame.draw.circle(window, 'green', [moves[i][0] * (WIDTH / 8) + (WIDTH / 16), moves[i][1] * (HEIGHT / 8) + (WIDTH / 16)], 5)
 
 
 # used to draw red outline around king if in check
-def draw_check():
-    if checked:
-        check_x = checked[0]
-        check_y = checked[1]
+def draw_check(check):
+    if check:
+        check_x = check[0]
+        check_y = check[1]
         pygame.draw.rect(window, 'red', [check_x * (WIDTH / 8), check_y * (HEIGHT / 8), (WIDTH / 8), (HEIGHT / 8)], 2)
 
 
-# used to draw all constant sections onto the board
-def draw_all_game():
+# used to draw all regular board parts
+def draw_all_board(board, sel_x, sel_y, moves, check):
     draw_board()
     draw_coords()
-    draw_pieces()
-    draw_selection()
-    draw_moves()
-    draw_check()
+    draw_pieces(board)
+    draw_selection(sel_x, sel_y)
+    draw_moves(moves)
+    draw_check(check)
 
 
 # used to draw promotion selection
@@ -219,12 +221,12 @@ def draw_promotion(x, y):
 
 
 # used draw winning message when win condition has been met
-def draw_winning_message():
+def draw_winning_message(w):
     pygame.draw.rect(window, 'black', [WIDTH / 4, HEIGHT / 2 - HEIGHT / 12, WIDTH / 2, HEIGHT / 6])
     pygame.draw.rect(window, 'white', [WIDTH / 4, HEIGHT / 2 - HEIGHT / 12, WIDTH / 2, HEIGHT / 6], 2)
-    if winner == 'w':
+    if w == 'w':
         winning_message = very_small_font.render('White Player is the Winner!', True, 'white')
-    elif winner == 'b':
+    elif w == 'b':
         winning_message = very_small_font.render('Black Player is the Winner!', True, 'white')
     else:
         winning_message = very_small_font.render('Draw', True, 'white')
@@ -234,12 +236,18 @@ def draw_winning_message():
     menu_message = very_small_font.render('Press [M] to return to the menu', True, 'white')
     window.blit(menu_message, (WIDTH / 4 + (WIDTH / 2 - menu_message.get_width()) / 2, HEIGHT / 2 - HEIGHT / 16 + winning_message.get_height() * 2))
 
+
 # used to draw the sidebar displaying turn, captured pieces and score (time also on sidebar but drawn separately)
 # wp = white points, cwp = captured white pieces (same for black), t = turn
 def draw_side_bar(wp, bp, cwp, cbp, t):
     pygame.draw.line(window, 'black', (WIDTH, 0), (WIDTH, HEIGHT), 5)
     pygame.draw.rect(window, (230, 230, 230), [WIDTH, 0, SIDE_WIDTH, HEIGHT])
-    pygame.draw.line(window, 'black', (WIDTH, HEIGHT / 2), (TOTAL_WIDTH, HEIGHT / 2), 2)
+    restart_prompt = extremely_small_font.render('Press R to restart game', True, 'black')
+    window.blit(restart_prompt, (WIDTH + ((SIDE_WIDTH - restart_prompt.get_width()) / 2), HEIGHT / 2 - restart_prompt.get_height()))
+    menu_prompt = extremely_small_font.render('Press M to return to menu', True, 'black')
+    window.blit(menu_prompt, (WIDTH + ((SIDE_WIDTH - menu_prompt.get_width()) / 2), HEIGHT / 2))
+    pygame.draw.line(window, 'black', (WIDTH, HEIGHT / 2 - restart_prompt.get_height() - HEIGHT / 64), (TOTAL_WIDTH, HEIGHT / 2 - restart_prompt.get_height() - HEIGHT / 64), 2)
+    pygame.draw.line(window, 'black', (WIDTH, HEIGHT / 2 + menu_prompt.get_height() + HEIGHT / 64), (TOTAL_WIDTH, HEIGHT / 2 + menu_prompt.get_height() + HEIGHT / 64), 2)
     if t == 'w':
         pygame.draw.rect(window, (10, 100, 10), [WIDTH, HEIGHT * 7 / 8, SIDE_WIDTH, HEIGHT / 8])
     else:
@@ -264,7 +272,7 @@ def draw_captured(cwp, cbp):
     y_offset = 0
     scaled = white_pawn.get_width() / 2
     for i in range(len(cwp)):
-        captured_piece = pygame.transform.scale(pieces[cwp[i]], (scaled, scaled))
+        captured_piece = pygame.transform.scale(PIECES[cwp[i]], (scaled, scaled))
         window.blit(captured_piece, (WIDTH + scaled / 3 + x_offset, HEIGHT / 8 + y_offset))
         x_offset += scaled
         if (i + 1) % 6 == 0:
@@ -273,14 +281,15 @@ def draw_captured(cwp, cbp):
     x_offset = 0
     y_offset = 0
     for i in range(len(cbp)):
-        captured_piece = pygame.transform.scale(pieces[cbp[i]], (scaled, scaled))
+        captured_piece = pygame.transform.scale(PIECES[cbp[i]], (scaled, scaled))
         window.blit(captured_piece, (WIDTH + scaled / 3 + x_offset, HEIGHT * 7 / 8 - scaled - y_offset))
         x_offset += scaled
         if (i + 1) % 6 == 0:
             x_offset = 0
             y_offset += scaled
 
-# draws turn where timer would be if playing time (only when playing without time)
+
+# draws turn where timer would be if playing with time (only when playing without time)
 def draw_turn(t):
     if t == 'w':
         turn_text = small_font.render('White Turn', True, 'black')
@@ -315,13 +324,13 @@ def draw_timers(wt, bt):
 
 
 # used to convert time setting to number of frames
-def convert_time(t):
+def convert_time(ts):
     converted_t = 60 * 60
-    if t == '5 Min':
+    if ts == '5 Min':
         converted_t *= 5
-    if t == '10 Min':
+    if ts == '10 Min':
         converted_t *= 10
-    if t == '20 Min':
+    if ts == '20 Min':
         converted_t *= 20
     return converted_t
 
@@ -390,6 +399,8 @@ def get_selected_moves(all_moves, sel_x, sel_y):
             selected_moves.append(all_moves[i][2])
     return selected_moves
 
+
+# get moves functions for each piece
 
 def get_pawn_moves(x, y, board):
     valid = []
@@ -546,7 +557,7 @@ def get_king_moves(x, y, board):
     return valid
 
 
-# takes current board and move data and returns new board after move has been made
+# takes current board selected piece (where piece is moving from) and the new destination and returns board after move has been made
 def make_move(board, sel_x, sel_y, new_x, new_y):
     # if en passant opportunity taken set piece captured by en_passant to empty
     if board[sel_y][sel_x][2:] == 'pawn' and board[new_y][new_x] == '' and sel_x != new_x:
@@ -572,7 +583,7 @@ def make_move(board, sel_x, sel_y, new_x, new_y):
     return board
 
 
-# used to check if a piece has been chosen from the promotion selection and then return that piece
+# used to check if a piece has been chosen from the promotion selection and then return that piece empty otherwise
 def promote_select(x, y):
     if HEIGHT / 2 - HEIGHT / 16 < y < HEIGHT / 2 - HEIGHT / 16 + HEIGHT / 8:
         offset = WIDTH / 4
@@ -586,7 +597,7 @@ def promote_select(x, y):
     return ''
 
 
-# used to check if a king is currently in check
+# used to check if a king is currently in check by checking all pieces under threat
 def check_check(board, all_moves, t):
     for i in range(len(all_moves)):
         x = all_moves[i][2][0]
@@ -599,7 +610,7 @@ def check_check(board, all_moves, t):
     return ()
 
 
-# used to check if current player is in checkmate (or stalemate) by checking if there are any valid playable moves
+# used to see if current player is in checkmate (or stalemate) by checking if there are any valid playable moves
 def check_checkmate(all_moves):
     if all_moves:
         return False
@@ -622,7 +633,7 @@ def reset_board():
 
 # menu code -------------------------------------------------------------------------------------------------------------------
 
-# used to draw the main menu including title and buttons to play, change settings and quit
+# used to draw the main menu including title and buttons to play and change settings
 def draw_main_menu(x, y):
     window.blit(background, (0, 0))
     title = very_large_font.render('Python Chess', True, 'white')
@@ -653,7 +664,7 @@ def draw_button(x, y, text, text_colour, font_type, colour_one, colour_two, offs
     window.blit(button_text, (offset_x + (width - button_text.get_width()) / 2, offset_y + (height - button_text.get_height()) / 2))
 
 
-# used to draw the settings menu, buttons to change the time per player and return to the menu
+# used to draw the settings menu, buttons to change the time per player and apply
 def draw_settings_menu(x, y, ts):
     window.blit(background, (0, 0))
     title = large_font.render('Settings', True, 'white')
@@ -663,10 +674,11 @@ def draw_settings_menu(x, y, ts):
     offset = TOTAL_WIDTH / 10
     time_selection = ['No time', '1 Min', '5 Min', '10 Min', '20 Min']
     for i in range(len(time_selection)):
-        draw_button(x, y, time_selection[i], 'black', very_small_font, 'white', (220, 220, 220), offset, (HEIGHT * 2 / 7), TOTAL_WIDTH / 6, HEIGHT / 16)
+        draw_button(x, y, time_selection[i], 'black', very_small_font, 'white', (220, 220, 220), offset, (HEIGHT * 2/7), TOTAL_WIDTH / 6, HEIGHT / 16)
         offset += TOTAL_WIDTH / 6 - 1
-    draw_button(x, y, 'Apply', 'black', very_small_font, 'white', (220, 220, 220), (TOTAL_WIDTH * 3 / 4) / 2, HEIGHT * 7 / 8, TOTAL_WIDTH / 4, HEIGHT / 12)
-    draw.rect(window, 'black', [(TOTAL_WIDTH * 3 / 4) / 2, HEIGHT * 7 / 8, TOTAL_WIDTH / 4, HEIGHT / 12], 3)
+    draw.rect(window, 'black', [TOTAL_WIDTH / 10, HEIGHT * 2/7, TOTAL_WIDTH * 5/6 - 4, HEIGHT / 16], 2)
+    draw_button(x, y, 'Apply', 'black', very_small_font, 'white', (220, 220, 220), (TOTAL_WIDTH * 3/4) / 2, HEIGHT * 7/8, TOTAL_WIDTH / 4, HEIGHT / 12)
+    draw.rect(window, 'black', [(TOTAL_WIDTH * 3/4) / 2, HEIGHT * 7/8, TOTAL_WIDTH / 4, HEIGHT / 12], 3)
 
 
 # used to check if a time button has been clicked on the menu
@@ -681,11 +693,12 @@ def get_time_button(x, y):
     return ''
 
 
+# loop for whole game -------------------------------------------------------------------------------------------------------------------
+
 # set initial all valid moves to all the valid moves for white
 all_valid_moves = get_all_valid_moves(board_layout, turn)
 running = True
 
-# loop for whole game
 while running:
     time.tick(FPS)
     # get mouse position
@@ -697,7 +710,7 @@ while running:
     if current_display == 'menu':
         draw_main_menu(mouse_x, mouse_y)
         for event in pygame.event.get():
-            # if button is clicked set the current display to match the button
+            # if option is clicked set the current display to match the option
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if TOTAL_WIDTH * 2 / 9 < mouse_x < TOTAL_WIDTH * 4 / 9 and HEIGHT / 3.5 < mouse_y < HEIGHT * 3 / 4:
                     current_display = 'game'
@@ -715,7 +728,7 @@ while running:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if get_time_button(mouse_x, mouse_y):
                     time_setting = get_time_button(mouse_x, mouse_y)
-                # return to menu button position
+                # apply button position
                 if (TOTAL_WIDTH * 3 / 4) / 2 < mouse_x < (TOTAL_WIDTH * 3 / 4) / 2 + TOTAL_WIDTH / 4 and \
                         HEIGHT * 7 / 8 < mouse_y < HEIGHT * 7 / 8 + HEIGHT / 12:
                     current_display = 'menu'
@@ -726,14 +739,14 @@ while running:
     # game loop
     if current_display == 'game':
         # draw everything onto window
-        draw_all_game()
+        draw_all_board(board_layout, selected_x, selected_y, moves_list, checked)
         draw_side_bar(white_points, black_points, captured_white_pieces, captured_black_pieces, turn)
         # if pawn needs promotion draw promotion selection
         if promoting:
             draw_promotion(mouse_x, mouse_y)
         # if there is a winner draw the winning message
         if winner:
-            draw_winning_message()
+            draw_winning_message(winner)
         # if a time is set and there is not currently a winner start timer code otherwise just draw turn instead
         if time_setting != 'No time' and not winner:
             # if time is not started set timers equal to the time setting selected
@@ -751,6 +764,7 @@ while running:
                 winner = 'b'
             if black_timer == 0:
                 winner = 'w'
+            # draw timers, pass in rounded down to the nearest second
             draw_timers(white_timer // 60, black_timer // 60)
         else:
             draw_turn(turn)
@@ -768,6 +782,7 @@ while running:
                     # change mouse click position to coordinates on the board
                     m_x = int(mouse_x // (WIDTH / 8))
                     m_y = int(mouse_y // (HEIGHT / 8))
+                    # save colour of piece before move
                     piece_colour = board_layout[m_y][m_x][:1]
                     # set valid_played back to false
                     valid_played = False
@@ -777,14 +792,14 @@ while running:
                             valid_x = moves_list[index][0]
                             valid_y = moves_list[index][1]
                             if m_x == valid_x and m_y == valid_y:
-                                # update points and add taken pieces to respective list
+                                # if valid update points and add taken pieces to respective captured list
                                 if turn == 'w' and piece_colour == 'b':
-                                    white_points += points[board_layout[m_y][m_x][2:]]
+                                    white_points += POINTS[board_layout[m_y][m_x][2:]]
                                     captured_black_pieces.append(board_layout[m_y][m_x])
                                 if turn == 'b' and piece_colour == 'w':
-                                    black_points += points[board_layout[m_y][m_x][2:]]
+                                    black_points += POINTS[board_layout[m_y][m_x][2:]]
                                     captured_white_pieces.append(board_layout[m_y][m_x])
-                                # store move in last_move
+                                # store move in last_move and make move
                                 last_move = [board_layout[selected_y][selected_x], (selected_x, selected_y), (m_x, m_y)]
                                 board_layout = make_move(board_layout, selected_x, selected_y, m_x, m_y)
                                 # if pawn reaches other side set promoting to true and store information about the promoting piece
@@ -820,7 +835,7 @@ while running:
                     turn = switch_turn(turn)
                 # generate all valid moves for the current players turn
                 all_valid_moves = get_all_valid_moves(board_layout, turn)
-                # check if in checkmate, if checked winner is set to the other player
+                # check for checkmate, if checked winner is set to the other player
                 # if not it is stalemate and the game ends in a draw
                 checkmate = check_checkmate(all_valid_moves)
                 if checkmate:
