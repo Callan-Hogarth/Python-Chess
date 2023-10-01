@@ -1,3 +1,11 @@
+
+"""
+File: main.py
+Author: Callan Hogarth
+Edited: 01/10/2023
+Description: Contains all code for 2 player chess game
+"""
+
 import sys
 import copy
 from math import inf
@@ -636,7 +644,7 @@ def reset_board():
 # used to draw the main menu including title and buttons to play and change settings
 def draw_main_menu(x, y):
     window.blit(background, (0, 0))
-    title = very_large_font.render('Python Chess', True, 'white')
+    title = very_large_font.render('Chess', True, 'white')
     window.blit(title, ((TOTAL_WIDTH - title.get_width()) / 2, HEIGHT / 16))
     window.blit(menu_pawn, (TOTAL_WIDTH * 2 / 9, HEIGHT / 3.5))
     window.blit(menu_gear, (TOTAL_WIDTH * 5 / 9, HEIGHT / 3.5))
