@@ -2,6 +2,13 @@
 
 Personal project, creating a chess game in python using pygame 
 
+## Contents
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Screenshots](#screenshots)
+- [Features to Add](#features-to-add)
+- [Credits](#credits)
+
 ## Requirements
 
 - Python (Version used: 3.9.13)
@@ -20,7 +27,7 @@ Personal project, creating a chess game in python using pygame
 - Time can be changed from the settings menu
 - Press <kbd> R </kbd> to restart game or <kbd> M </kbd> to return to menu
 
-## Sreenshots
+## Screenshots
 
 ### Starting Board:
 
@@ -41,7 +48,7 @@ Personal project, creating a chess game in python using pygame
 
 ### Images
 
-- en:User:Cburnett, CC BY-SA 3.0 <https://creativecommons.org/licenses/by-sa/3.0>, via Wikimedia Commons
+- en:User:Cburnett, CC BY-SA 3.0 <https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent>, via Wikimedia Commons
 - Image by benzoix on Freepik <https://www.freepik.com/free-photo/abstract-textured-backgound_12072945.htm#query=black%20gradient&position=11&from_view=keyword&track=ais> 
 - Chess Piece Pawn Queen Knight - Chess Piece @clipartmax.com <https://www.clipartmax.com/middle/m2H7N4K9A0d3K9d3_chess-piece-pawn-queen-knight-chess-piece-pawn-queen-knight> 
 - Creative Usage Of Sugarcrm - Black And White Clipart Of Gear @clipartmax.com <https://www.clipartmax.com/middle/m2H7Z5K9d3G6A0Z5_creative-usage-of-sugarcrm-black-and-white-clipart-of-gear>
