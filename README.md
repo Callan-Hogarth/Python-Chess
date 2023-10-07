@@ -2,6 +2,11 @@
 
 Personal project, creating a chess game in python using pygame 
 
+## Requirements
+
+- Python (Version used: 3.9.13)
+- Pygame (Version used: 2.5.0)
+
 ## Setup
 
 ### Instructions 
@@ -13,7 +18,7 @@ Personal project, creating a chess game in python using pygame
 ### More Info
 
 - Time can be changed from the settings menu
-- Press <kbd> R </kbd> to restart a game or <kbd> M </kbd> to return to menu
+- Press <kbd> R </kbd> to restart game or <kbd> M </kbd> to return to menu
 
 ## Images
 
