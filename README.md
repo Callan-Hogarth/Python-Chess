@@ -55,4 +55,4 @@ Personal project, creating a chess game in python using pygame
 
 ### Other 
 
-- Used as referenece during very beginning of project to learn the basics of using pygame - <https://www.youtube.com/watch?v=X-e0jk4I938> - no major code was copied when designing my chess game however some ideas were used as a basic starting point when implementing my own approach to building the game 
+- Used as referenece during beginning of project to learn the basics of using pygame - <https://www.youtube.com/watch?v=X-e0jk4I938> - no major code was copied when designing my chess game however some ideas were used as a basic starting point when implementing my own approach to building the game 
